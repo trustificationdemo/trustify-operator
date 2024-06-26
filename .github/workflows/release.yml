@@ -1,0 +1,161 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version"
+        default: "E.g. 4.0.0"
+        required: true
+      next:
+        description: "Next version"
+        default: "E.g. 5.0.0-SNAPSHOT"
+        required: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: maven
+      - name: Set release version ${{ github.event.inputs.version }}
+        run: |
+          mvn -B versions:set versions:commit -DnewVersion=$NEW_VERSION
+        env:
+          NEW_VERSION: ${{ github.event.inputs.version }}
+      - name: Commit and Push
+        uses: trustification/release-tools/.github/actions/commit@main
+        with:
+          commit_message: "🏁 Releasing version ${{ github.event.inputs.version }}"
+          branch: main
+
+  release:
+    needs: [ prepare ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+          cache: maven
+      - name: JReleaser - release
+        uses: jreleaser/release-action@v2
+        env:
+          JRELEASER_GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          JRELEASER_PROJECT_VERSION: ${{ github.event.inputs.version }}
+          JRELEASER_PRERELEASE_PATTERN: .*(?:Alpha|alpha|Beta|beta)[0-9]
+      - name: JReleaser - generate log
+        if: always()
+        shell: bash
+        run: tar -czvf jreleaser-log.tgz out/
+      - name: JReleaser - upload log
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: jreleaser-log
+          path: 'jreleaser-log.tgz'
+      - name: Set version ${{ github.event.inputs.next }}
+        run: |
+          mvn -B versions:set versions:commit -DnewVersion=$NEW_VERSION
+        env:
+          NEW_VERSION: ${{ github.event.inputs.next }}
+      - name: Commit and Push
+        uses: trustification/release-tools/.github/actions/commit@main
+        with:
+          commit_message: "⬆️ Next version ${{ github.event.inputs.next }}"
+          branch: main
+
+  publish-bundle:
+    needs: [ release ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: wait for image
+        run: |
+          #!/bin/bash
+          while ! docker pull ghcr.io/${{ github.repository_owner }}/trustify-operator-bundle:v${{ github.event.inputs.version }} &> /dev/null; do
+            sleep 3m
+          done
+          docker image inspect ghcr.io/${{ github.repository_owner }}/trustify-operator-bundle:v${{ github.event.inputs.version }}
+
+      - name: Create scratch bundle image
+        run: |
+          docker create --name extract "ghcr.io/${{ github.repository_owner }}/trustify-operator-bundle:v${{ github.event.inputs.version }}" foo
+
+      - name: Checkout community operators
+        uses: actions/checkout@v4
+        with:
+          repository: k8s-operatorhub/community-operators
+          path: community-operators
+          ref: main
+          fetch-depth: 0
+      - name: Update community operators
+        working-directory: ./community-operators
+        run: |
+          version="${{ github.event.inputs.version }}"
+          co_version="${version:0}"
+          operator_path="./operators/trustify-operator/${co_version}"
+          mkdir -p "${operator_path}"
+          docker cp extract:/metadata "${operator_path}"
+          docker cp extract:/manifests "${operator_path}"
+          git diff
+
+      - name: Checkout redhat community operators
+        uses: actions/checkout@v4
+        with:
+          repository: redhat-openshift-ecosystem/community-operators-prod
+          path: redhat-community-operators
+          ref: main
+          fetch-depth: 0
+      - name: Update redhat community operators
+        working-directory: ./redhat-community-operators
+        run: |
+          version="${{ inputs.version }}"
+          co_version="${version:0}"
+          operator_path="./operators/konveyor-operator/${co_version}"
+          mkdir -p "${operator_path}"
+          docker cp extract:/metadata "${operator_path}"
+          docker cp extract:/manifests "${operator_path}"
+          git diff
+
+      - name: Create Pull Request - Community Operators
+        uses: peter-evans/create-pull-request@v5
+        id: co-cpr
+        with:
+          token: ${{ secrets.GH_PAT }}
+          path: ./community-operators
+          commit-message: "trustify-operator-${{ github.event.inputs.version }}"
+          committer: "trust.git.bot <noreply@github.com>"
+          author: "trust.git.bot <trust.git.bot@users.noreply.github.com>"
+          signoff: true
+          branch: ${{ github.event.inputs.version }}
+          push-to-fork: trustification/community-operators
+          title: "trustify-operator-${{ github.event.inputs.version }}"
+#          body-path: ./changelog.md
+
+      - name: Create Pull Request - Red Hat Community Operators
+        uses: peter-evans/create-pull-request@v5
+        id: rhco-cpr
+        with:
+          token: ${{ secrets.GH_PAT }}
+          path: ./redhat-community-operators
+          commit-message: "trustify-operator-${{ github.event.inputs.version }}"
+          committer: "trust.git.bot <noreply@github.com>"
+          author: "trust.git.bot <trust.git.bot@users.noreply.github.com>"
+          signoff: true
+          branch: ${{ github.event.inputs.version }}
+          push-to-fork: trustification/community-operators-prod
+          title: "trustify-operator-${{ github.event.inputs.version }}"
+#          body-path: ./changelog.md
+
+      - name: PR Notifications
+        run: |
+          echo "::notice:: Community Operators Pull Request URL - ${{ steps.co-cpr.outputs.pull-request-url }}"
+          echo "::notice:: Red Hat Community Operators Pull Request URL - ${{ steps.rhco-cpr.outputs.pull-request-url }}"
