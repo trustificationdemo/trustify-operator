@@ -109,6 +109,7 @@ public class ServerDeployment extends CRUDKubernetesDependentResource<Deployment
                 .orElse(null);
 
         return new DeploymentSpecBuilder()
+                .withMinReadySeconds(2)
                 .withStrategy(new DeploymentStrategyBuilder()
                         .withType("Recreate")
                         .build()
@@ -135,7 +136,7 @@ public class ServerDeployment extends CRUDKubernetesDependentResource<Deployment
                                         .withImage(image)
                                         .withImagePullPolicy(imagePullPolicy)
                                         .withEnv(envVars)
-                                        .withCommand("/usr/local/bin/trustd", "server", "--devmode")
+                                        .withCommand("/usr/local/bin/trustd", "api", "--devmode")
                                         .withPorts(
                                                 new ContainerPortBuilder()
                                                         .withName("http")
