@@ -1,4 +1,4 @@
-package org.trustify.operator.cdrs.v2alpha1.api;
+package org.trustify.operator.cdrs.v2alpha1.server;
 
 import io.fabric8.kubernetes.api.model.networking.v1.Ingress;
 import io.fabric8.kubernetes.api.model.networking.v1.IngressTLS;
@@ -15,11 +15,11 @@ import org.trustify.operator.utils.CRDUtils;
 import java.util.Collections;
 import java.util.Map;
 
-@KubernetesDependent(labelSelector = ApiIngressSecure.LABEL_SELECTOR, resourceDiscriminator = ApiIngressSecureDiscriminator.class)
+@KubernetesDependent(labelSelector = ServerIngressSecure.LABEL_SELECTOR, resourceDiscriminator = ServerIngressSecureDiscriminator.class)
 @ApplicationScoped
-public class ApiIngressSecure extends ApiIngressBase {
+public class ServerIngressSecure extends ServerIngressBase {
 
-    public static final String LABEL_SELECTOR = "app.kubernetes.io/managed-by=trustify-operator,component=api,component-variant=https";
+    public static final String LABEL_SELECTOR = "app.kubernetes.io/managed-by=trustify-operator,component=server,component-variant=https";
 
     @Override
     @SuppressWarnings("unchecked")
@@ -29,7 +29,7 @@ public class ApiIngressSecure extends ApiIngressBase {
                 context,
                 getIngressName(cr),
                 Map.of(
-                        "component", "api",
+                        "component", "server",
                         "component-variant", "https"
                 ),
                 Collections.emptyMap()
@@ -38,7 +38,7 @@ public class ApiIngressSecure extends ApiIngressBase {
 
     @Override
     public boolean isMet(DependentResource<Ingress, Trustify> dependentResource, Trustify primary, Context<Trustify> context) {
-        return context.getSecondaryResource(Ingress.class, new ApiIngressSecureDiscriminator())
+        return context.getSecondaryResource(Ingress.class, new ServerIngressSecureDiscriminator())
                 .map(in -> {
                     final var status = in.getStatus();
                     if (status != null) {
