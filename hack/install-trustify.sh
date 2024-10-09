@@ -22,8 +22,16 @@ fi
 
 run_bundle() {
   kubectl auth can-i create namespace --all-namespaces
-  kubectl create namespace ${NAMESPACE} || true
-  operator-sdk run bundle "${OPERATOR_BUNDLE_IMAGE}" --namespace "${NAMESPACE}" --timeout "${TIMEOUT}" || operator-sdk run bundle-upgrade "${OPERATOR_BUNDLE_IMAGE}" --namespace "${NAMESPACE}" --timeout "${TIMEOUT}" || (kubectl get Subscription --namespace "${NAMESPACE}" -o yaml && exit 1)
+
+  # delete the ns if it exists, effectively undeploying the current
+  # Trustify instance. This kinda defeats the purpose of operators,
+  # obviously, but I'm not familiar enough with the operator-sdk
+  # command to convince it to reinstall/upgrade the bundle -- run
+  # bundle-upgrade didn't work :(
+  kubectl delete namespace ${NAMESPACE} || true
+
+  kubectl create namespace ${NAMESPACE}
+  operator-sdk run bundle "${OPERATOR_BUNDLE_IMAGE}" --namespace "${NAMESPACE}" --timeout "${TIMEOUT}" || (kubectl get Subscription --namespace "${NAMESPACE}" -o yaml && exit 1)
 
   # If on MacOS, need to install `brew install coreutils` to get `timeout`
   timeout 600s bash -c 'until kubectl get customresourcedefinitions.apiextensions.k8s.io trustifies.org.trustify; do sleep 30; done' \
