@@ -23,7 +23,7 @@ fi
 run_bundle() {
   kubectl auth can-i create namespace --all-namespaces
   kubectl create namespace ${NAMESPACE} || true
-  operator-sdk run bundle "${OPERATOR_BUNDLE_IMAGE}" --namespace "${NAMESPACE}" --timeout "${TIMEOUT}" || (kubectl get Subscription --namespace "${NAMESPACE}" -o yaml && exit 1)
+  operator-sdk run bundle "${OPERATOR_BUNDLE_IMAGE}" --namespace "${NAMESPACE}" --timeout "${TIMEOUT}" || operator-sdk run bundle-upgrade "${OPERATOR_BUNDLE_IMAGE}" --namespace "${NAMESPACE}" --timeout "${TIMEOUT}" || (kubectl get Subscription --namespace "${NAMESPACE}" -o yaml && exit 1)
 
   # If on MacOS, need to install `brew install coreutils` to get `timeout`
   timeout 600s bash -c 'until kubectl get customresourcedefinitions.apiextensions.k8s.io trustifies.org.trustify; do sleep 30; done' \
@@ -80,8 +80,6 @@ EOF
     --field-selector=status.phase!=Running  \
     -o yaml \
     pods # Print not running trustify pods when timed out
-
-  kubectl get deployments.apps -n "${NAMESPACE}" -o yaml
 }
 
 # Available versions of OLM here https://github.com/operator-framework/operator-lifecycle-manager/releases
