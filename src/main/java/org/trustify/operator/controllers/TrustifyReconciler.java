@@ -1,5 +1,6 @@
 package org.trustify.operator.controllers;
 
+import io.fabric8.kubernetes.api.model.PersistentVolumeClaim;
 import io.fabric8.kubernetes.api.model.Service;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.javaoperatorsdk.operator.api.config.informer.InformerConfiguration;
@@ -53,13 +54,13 @@ import static io.javaoperatorsdk.operator.api.reconciler.Constants.WATCH_CURRENT
                         type = ServerDeployment.class,
 //                        dependsOn = {"db-service"},
                         readyPostcondition = ServerDeployment.class,
-                        useEventSourceWithName = "server-deployment"
+                        useEventSourceWithName = TrustifyReconciler.DEPLOYMENT_EVENT_SOURCE
                 ),
                 @Dependent(
                         name = "server-service",
                         type = ServerService.class,
                         dependsOn = {"server-deployment"},
-                        useEventSourceWithName = "server-service"
+                        useEventSourceWithName = TrustifyReconciler.SERVICE_EVENT_SOURCE
                 ),
 
                 @Dependent(
@@ -74,8 +75,8 @@ public class TrustifyReconciler implements Reconciler<Trustify>, ContextInitiali
 
     private static final Logger logger = Logger.getLogger(TrustifyReconciler.class);
 
-    public static final String SERVER_DEPLOYMENT_EVENT_SOURCE = "server-deployment";
-    public static final String SERVER_SERVICE_EVENT_SOURCE = "server-service";
+    public static final String DEPLOYMENT_EVENT_SOURCE = "deploymentSource";
+    public static final String SERVICE_EVENT_SOURCE = "serviceSource";
 
     @Override
     public void initContext(Trustify cr, Context<Trustify> context) {
@@ -121,15 +122,15 @@ public class TrustifyReconciler implements Reconciler<Trustify>, ContextInitiali
 
     @Override
     public Map<String, EventSource> prepareEventSources(EventSourceContext<Trustify> context) {
-        var serverDeploymentInformerConfiguration = InformerConfiguration.from(Deployment.class, context).build();
-        var serverServiceInformerConfiguration = InformerConfiguration.from(Service.class, context).build();
+        var deploymentInformerConfiguration = InformerConfiguration.from(Deployment.class, context).build();
+        var serviceInformerConfiguration = InformerConfiguration.from(Service.class, context).build();
 
-        var serverDeploymentInformerEventSource = new InformerEventSource<>(serverDeploymentInformerConfiguration, context);
-        var serverServiceInformerEventSource = new InformerEventSource<>(serverServiceInformerConfiguration, context);
+        var deploymentInformerEventSource = new InformerEventSource<>(deploymentInformerConfiguration, context);
+        var serviceInformerEventSource = new InformerEventSource<>(serviceInformerConfiguration, context);
 
         return Map.of(
-                SERVER_DEPLOYMENT_EVENT_SOURCE, serverDeploymentInformerEventSource,
-                SERVER_SERVICE_EVENT_SOURCE, serverServiceInformerEventSource
+                DEPLOYMENT_EVENT_SOURCE, deploymentInformerEventSource,
+                SERVICE_EVENT_SOURCE, serviceInformerEventSource
         );
     }
 }

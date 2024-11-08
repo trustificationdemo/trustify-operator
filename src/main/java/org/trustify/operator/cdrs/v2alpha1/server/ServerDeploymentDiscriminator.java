@@ -15,7 +15,7 @@ public class ServerDeploymentDiscriminator implements ResourceDiscriminator<Depl
     public Optional<Deployment> distinguish(Class<Deployment> resource, Trustify cr, Context<Trustify> context) {
         String deploymentName = ServerDeployment.getDeploymentName(cr);
         ResourceID resourceID = new ResourceID(deploymentName, cr.getMetadata().getNamespace());
-        var informerEventSource = (InformerEventSource<Deployment, Trustify>) context.eventSourceRetriever().getResourceEventSourceFor(Deployment.class, TrustifyReconciler.SERVER_DEPLOYMENT_EVENT_SOURCE);
+        var informerEventSource = (InformerEventSource<Deployment, Trustify>) context.eventSourceRetriever().getResourceEventSourceFor(Deployment.class, TrustifyReconciler.DEPLOYMENT_EVENT_SOURCE);
         return informerEventSource.get(resourceID);
     }
 }
