@@ -12,10 +12,7 @@ import org.jboss.logging.Logger;
 import org.trustify.operator.cdrs.v2alpha1.Trustify;
 import org.trustify.operator.cdrs.v2alpha1.TrustifyStatusCondition;
 import org.trustify.operator.cdrs.v2alpha1.db.*;
-import org.trustify.operator.cdrs.v2alpha1.server.ServerDeployment;
-import org.trustify.operator.cdrs.v2alpha1.server.ServerIngress;
-import org.trustify.operator.cdrs.v2alpha1.server.ServerService;
-import org.trustify.operator.cdrs.v2alpha1.server.ServerStoragePersistentVolumeClaim;
+import org.trustify.operator.cdrs.v2alpha1.server.*;
 
 import java.time.Duration;
 import java.util.Map;
@@ -46,32 +43,27 @@ import static io.javaoperatorsdk.operator.api.reconciler.Constants.WATCH_CURRENT
                 @Dependent(
                         name = "db-service",
                         type = DBService.class,
-                        dependsOn = {"db-deployment"},
                         activationCondition = DBServiceActivationCondition.class
                 ),
 
                 @Dependent(
                         name = "server-pvc",
-                        type = ServerStoragePersistentVolumeClaim.class
+                        type = ServerStoragePersistentVolumeClaim.class,
+                        activationCondition = ServerStoragePersistentVolumeClaimActivationCondition.class
                 ),
                 @Dependent(
                         name = "server-deployment",
                         type = ServerDeployment.class,
-//                        dependsOn = {"db-service"},
-                        readyPostcondition = ServerDeployment.class,
-                        useEventSourceWithName = TrustifyReconciler.DEPLOYMENT_EVENT_SOURCE
+                        readyPostcondition = ServerDeployment.class
                 ),
                 @Dependent(
                         name = "server-service",
-                        type = ServerService.class,
-                        dependsOn = {"server-deployment"},
-                        useEventSourceWithName = TrustifyReconciler.SERVICE_EVENT_SOURCE
+                        type = ServerService.class
                 ),
 
                 @Dependent(
                         name = "ingress",
                         type = ServerIngress.class,
-                        dependsOn = {"server-service"},
                         readyPostcondition = ServerIngress.class
                 )
         }
