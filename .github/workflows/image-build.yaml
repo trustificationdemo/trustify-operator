@@ -43,6 +43,7 @@ jobs:
     steps:
       - name: Extract env vars for main
         shell: bash
+        if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           branch=main
           bundle_version=99.0.0-$branch.$(date +"%Y%m%d.%H%M%S")
@@ -50,21 +51,23 @@ jobs:
           
           echo "channels=$branch" >> $GITHUB_ENV
           echo "bundle_image_tag=v$bundle_version" >> $GITHUB_ENV
+          echo "bundle_image_tag_branch=latest" >> $GITHUB_ENV
           echo "quarkus_opts=$quarkus_opts" >> $GITHUB_ENV
-        if: ${{ github.ref == 'refs/heads/main' }}
       - name: Extract env vars from tag
         shell: bash
+        if: contains(github.ref, 'tags')
         run: |
           tag=$(echo ${GITHUB_REF#refs/tags/})
           # We expect the pom.xml has the appropiate version values so we do not set '-Dquarkus.application.version=$bundle_version' here
           quarkus_opts="-Dquarkus.container-image.image=ghcr.io/${{ github.repository_owner }}/trustify-operator:$tag"
           
           echo "channels=alpha" >> $GITHUB_ENV
-          echo "bundle_image_tag=$tag" >> $GITHUB_ENV          
+          echo "bundle_image_tag=$tag" >> $GITHUB_ENV
+          # echo "bundle_image_tag_branch=$tag" >> $GITHUB_ENV
           echo "quarkus_opts=$quarkus_opts" >> $GITHUB_ENV
-        if: contains(github.ref, 'tags')
       - name: Extract env vars from all other branches
         shell: bash
+        if: contains(github.ref, 'refs/heads/main') == false && contains(github.ref, 'tags') == false
         run: |
           branch=$(echo ${GITHUB_REF#refs/heads/})
           branch="${branch#release/}"
@@ -73,8 +76,8 @@ jobs:
           
           echo "channels=$branch" >> $GITHUB_ENV
           echo "bundle_image_tag=v$bundle_version" >> $GITHUB_ENV
-          echo "quarkus_opts=$quarkus_opts" >> $GITHUB_ENV
-        if: contains(github.ref, 'refs/heads/main') == false && contains(github.ref, 'tags') == false
+          echo "bundle_image_tag_branch=$branch" >> $GITHUB_ENV
+          echo "quarkus_opts=$quarkus_opts" >> $GITHUB_ENV        
 
       - name: Build bundle
         uses: trustification/release-tools/.github/actions/build-push@main
@@ -84,7 +87,7 @@ jobs:
           image_registry: ghcr.io
           image_namespace: ${{ github.repository_owner }}
           image_name: trustify-operator-bundle
-          tags: ${{ env.bundle_image_tag }}
+          tags: ${{ env.bundle_image_tag }} ${{ env.bundle_image_tag_branch }}
           build-args: |
             CHANNELS=${{ env.channels }}
             QUARKUS_OPTS=${{ env.quarkus_opts }}
