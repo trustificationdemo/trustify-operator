@@ -33,7 +33,12 @@ import io.quarkiverse.operatorsdk.annotations.SharedCSVMetadata;
                 ),
                 @CSVMetadata.PermissionRule(
                         apiGroups = {"apps", "extensions"},
-                        resources = {"deployments", "statefulsets"},
+                        resources = {"deployments"},
+                        verbs = {"*"}
+                ),
+                @CSVMetadata.PermissionRule(
+                        apiGroups = {"apps"},
+                        resources = {"statefulsets"},
                         verbs = {"*"}
                 ),
                 @CSVMetadata.PermissionRule(
