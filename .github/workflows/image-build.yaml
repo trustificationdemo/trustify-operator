@@ -46,7 +46,7 @@ jobs:
         if: ${{ github.ref == 'refs/heads/main' }}
         run: |
           branch=main
-          bundle_version=99.0.0-$branch.$(date +"%Y%m%d.%H%M%S")
+          bundle_version=99.0.0-$branch-$(date +"%Y%m%d-%H%M%S")
           quarkus_opts="-Dquarkus.container-image.image=ghcr.io/${{ github.repository_owner }}/trustify-operator:latest -Dquarkus.application.version=$bundle_version"
           
           echo "channels=$branch" >> $GITHUB_ENV
@@ -70,8 +70,8 @@ jobs:
         if: contains(github.ref, 'refs/heads/main') == false && contains(github.ref, 'tags') == false
         run: |
           branch=$(echo ${GITHUB_REF#refs/heads/})
-          branch="${branch#release/}"
-          bundle_version=99.0.0-$branch.$(date +"%Y%m%d.%H%M%S")
+          branch="${branch#release/}"          
+          bundle_version=99.0.0-$branch-$(date +"%Y%m%d-%H%M%S")
           quarkus_opts="-Dquarkus.container-image.image=ghcr.io/${{ github.repository_owner }}/trustify-operator:$branch -Dquarkus.application.version=$bundle_version"
           
           echo "channels=$branch" >> $GITHUB_ENV
