@@ -2,7 +2,7 @@ name: PR Checks
 
 on:
   pull_request_target:
-    types: [ opened, edited, reopened, synchronize ]
+    types: [opened, edited, reopened, synchronize]
 
 jobs:
   verify:
@@ -11,6 +11,6 @@ jobs:
     steps:
       - name: Check Title
         id: verifier
-        uses: trustification/release-tools/cmd/verify-pr@main
+        uses: trustificationdemo/release-tools/cmd/verify-pr@main
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
